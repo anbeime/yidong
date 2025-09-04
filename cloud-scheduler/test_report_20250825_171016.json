@@ -1,0 +1,53 @@
+{
+  "summary": {
+    "total": 7,
+    "passed": 3,
+    "failed": 4,
+    "success_rate": 42.857142857142854
+  },
+  "details": [
+    {
+      "name": "代码生成器基础功能",
+      "status": "PASSED",
+      "time": 0.021149158477783203,
+      "details": "测试通过"
+    },
+    {
+      "name": "移动云API集成",
+      "status": "PASSED",
+      "time": 0.13798117637634277,
+      "details": "测试通过"
+    },
+    {
+      "name": "用户认证系统",
+      "status": "FAILED",
+      "time": 0,
+      "details": "No module named 'jwt'"
+    },
+    {
+      "name": "项目存储功能",
+      "status": "FAILED",
+      "time": 0,
+      "details": "No module named 'jwt'"
+    },
+    {
+      "name": "版本管理功能",
+      "status": "PASSED",
+      "time": 0.04242968559265137,
+      "details": "测试通过"
+    },
+    {
+      "name": "资源管理功能",
+      "status": "FAILED",
+      "time": 0,
+      "details": "No module named 'jwt'"
+    },
+    {
+      "name": "端到端集成测试",
+      "status": "FAILED",
+      "time": 0,
+      "details": "No module named 'jwt'"
+    }
+  ],
+  "timestamp": "2025-08-25T17:10:16.583032"
+}

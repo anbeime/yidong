@@ -1,0 +1,47 @@
+# CloudCoder AI云原生应用生成平台 - 依赖包配置
+
+# Web框架
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+pydantic==2.11.7
+
+# AI/ML核心库
+torch==2.8.0
+numpy==2.2.6
+pandas==2.3.2
+scikit-learn==1.7.1
+scipy==1.16.1
+
+# 数据处理和可视化
+matplotlib==3.10.5
+seaborn==0.13.2
+joblib==1.5.1
+
+# 异步处理
+aiohttp==3.9.1
+asyncio==3.4.3
+aiofiles==0.8.0
+
+# HTTP客户端
+requests==2.31.0
+httpx==0.25.2
+
+# 工具库
+python-dotenv==1.0.0
+Jinja2==3.1.6
+python-multipart==0.0.6
+
+# 数据库
+sqlalchemy==2.0.43
+redis==4.6.0
+psycopg2-binary==2.9.9
+
+# 开发和测试工具
+pytest==7.4.3
+black==23.11.0
+isort==5.12.0
+
+# 其他核心依赖
+python-dateutil==2.9.0
+pytz==2025.2
+typing-extensions==4.14.1

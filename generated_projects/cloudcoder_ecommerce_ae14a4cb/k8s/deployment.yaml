@@ -1,0 +1,4 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudcoder_ecommerce_ae14a4cb

@@ -1,0 +1,17 @@
+{
+    "python.pythonPath": "C:\\Program Files\\Python311\\python.exe",
+    "python.defaultInterpreterPath": "C:\\Program Files\\Python311\\python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.pycodestyleEnabled": true,
+    "python.formatting.provider": "black",
+    "python.analysis.extraPaths": [
+        "C:\\Users\\13632\\AppData\\Roaming\\Python\\Python311\\site-packages"
+    ],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "files.associations": {
+        "*.py": "python"
+    }
+}

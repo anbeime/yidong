@@ -1,0 +1,4 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudcoder_webapp_5c6e6312-service

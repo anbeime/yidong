@@ -1,0 +1,166 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 触发器样式 */
+.trigger {
+  font-size: 18px;
+  line-height: 64px;
+  padding: 0 24px;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.trigger:hover {
+  color: #1890ff;
+}
+
+/* 主布局样式 */
+.site-layout .site-layout-background {
+  background: #fff;
+}
+
+/* 侧边栏样式优化 */
+.ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Logo区域样式 */
+.logo {
+  height: 64px;
+  margin: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.logo-collapsed {
+  justify-content: center;
+}
+
+.logo-expanded {
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+/* 菜单样式优化 */
+.ant-menu-inline {
+  border-right: none;
+}
+
+.ant-menu-item:hover,
+.ant-menu-submenu-title:hover {
+  color: #1890ff !important;
+}
+
+.ant-menu-item-selected {
+  background-color: #e6f7ff !important;
+  border-right: 3px solid #1890ff;
+}
+
+/* 头部样式 */
+.site-layout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 用户头像区域 */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background-color 0.3s;
+}
+
+.user-info:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* 通知铃铛样式 */
+.notification-bell {
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.3s;
+}
+
+.notification-bell:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* 内容区域样式 */
+.site-layout-content {
+  min-height: 360px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  margin: 16px;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .site-layout-header {
+    padding: 0 8px;
+  }
+  
+  .header-left h4 {
+    display: none;
+  }
+  
+  .site-layout-content {
+    margin: 8px;
+    padding: 16px;
+  }
+}

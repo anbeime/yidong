@@ -1,0 +1,401 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloud-scheduler-config
+  namespace: cloud-scheduler
+data:
+  DATABASE_URL: "mysql+pymysql://scheduler:schedulerpass@mysql:3306/cloud_scheduler"
+  REDIS_URL: "redis://redis:6379"
+  AI_ENGINE_URL: "http://ai-engine:8001"
+  PROMETHEUS_ENABLED: "true"
+  LOG_LEVEL: "INFO"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloud-scheduler-secrets
+  namespace: cloud-scheduler
+type: Opaque
+data:
+  # Base64编码的密钥，实际部署时需要替换
+  SECRET_KEY: eW91ci1zdXBlci1zZWNyZXQta2V5LWNoYW5nZS1pbi1wcm9kdWN0aW9u
+  ECLOUD_ACCESS_KEY: eW91ci1lY2xvdWQtYWNjZXNzLWtleQ==
+  ECLOUD_SECRET_KEY: eW91ci1lY2xvdWQtc2VjcmV0LWtleQ==
+  MYSQL_ROOT_PASSWORD: cm9vdHBhc3N3b3Jk
+  MYSQL_PASSWORD: c2NoZWR1bGVycGFzcw==
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: cloud-scheduler
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ecloud-ssd
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: cloud-scheduler
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: ecloud-ssd
+
+---
+# MySQL数据库部署
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: cloud-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cloud-scheduler-secrets
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          value: "cloud_scheduler"
+        - name: MYSQL_USER
+          value: "scheduler"
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cloud-scheduler-secrets
+              key: MYSQL_PASSWORD
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: cloud-scheduler
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+  type: ClusterIP
+
+---
+# Redis缓存部署
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: cloud-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: cloud-scheduler
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP
+
+---
+# 后端API服务部署
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-scheduler-backend
+  namespace: cloud-scheduler
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cloud-scheduler-backend
+  template:
+    metadata:
+      labels:
+        app: cloud-scheduler-backend
+    spec:
+      containers:
+      - name: backend
+        image: registry.cmecloud.cn/cloud-scheduler/backend:latest
+        envFrom:
+        - configMapRef:
+            name: cloud-scheduler-config
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cloud-scheduler-secrets
+              key: SECRET_KEY
+        - name: ECLOUD_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cloud-scheduler-secrets
+              key: ECLOUD_ACCESS_KEY
+        - name: ECLOUD_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cloud-scheduler-secrets
+              key: ECLOUD_SECRET_KEY
+        ports:
+        - containerPort: 8000
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloud-scheduler-backend
+  namespace: cloud-scheduler
+spec:
+  selector:
+    app: cloud-scheduler-backend
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: LoadBalancer
+
+---
+# AI引擎服务部署
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-scheduler-ai
+  namespace: cloud-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloud-scheduler-ai
+  template:
+    metadata:
+      labels:
+        app: cloud-scheduler-ai
+    spec:
+      containers:
+      - name: ai-engine
+        image: registry.cmecloud.cn/cloud-scheduler/ai-engine:latest
+        envFrom:
+        - configMapRef:
+            name: cloud-scheduler-config
+        ports:
+        - containerPort: 8001
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-engine
+  namespace: cloud-scheduler
+spec:
+  selector:
+    app: cloud-scheduler-ai
+  ports:
+  - port: 8001
+    targetPort: 8001
+  type: ClusterIP
+
+---
+# 前端服务部署
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-scheduler-frontend
+  namespace: cloud-scheduler
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cloud-scheduler-frontend
+  template:
+    metadata:
+      labels:
+        app: cloud-scheduler-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: registry.cmecloud.cn/cloud-scheduler/frontend:latest
+        env:
+        - name: REACT_APP_API_URL
+          value: "http://cloud-scheduler-backend:8000"
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloud-scheduler-frontend
+  namespace: cloud-scheduler
+spec:
+  selector:
+    app: cloud-scheduler-frontend
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: LoadBalancer
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: cloud-scheduler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cloud-scheduler-backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+  namespace: cloud-scheduler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cloud-scheduler-frontend
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

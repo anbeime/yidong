@@ -1,0 +1,37 @@
+# AI/ML核心库
+torch==2.1.1
+numpy==1.24.4
+pandas==2.1.4
+scikit-learn==1.3.2
+scipy==1.11.4
+
+# Web框架
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# 数据处理
+joblib==1.3.2
+matplotlib==3.8.2
+seaborn==0.13.0
+
+# 时序分析
+statsmodels==0.14.0
+pmdarima==2.0.4
+
+# 异步处理
+aioredis==2.0.1
+asyncio==3.4.3
+
+# 工具库
+python-dotenv==1.0.0
+structlog==23.2.0
+
+# HTTP客户端
+httpx==0.25.2
+aiohttp==3.9.1
+
+# 开发工具
+pytest==7.4.3
+black==23.11.0
+isort==5.12.0

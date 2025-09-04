@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: cloud-scheduler-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: cloud_scheduler
+      MYSQL_USER: scheduler
+      MYSQL_PASSWORD: schedulerpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./deployment/docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - scheduler-network
+    restart: unless-stopped
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: cloud-scheduler-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - scheduler-network
+    restart: unless-stopped
+
+  # 后端API服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloud-scheduler-backend
+    environment:
+      - DATABASE_URL=mysql+pymysql://scheduler:schedulerpass@mysql:3306/cloud_scheduler
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=your-secret-key-here
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./ai-engine:/ai-engine
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - scheduler-network
+    restart: unless-stopped
+
+  # AI引擎服务
+  ai-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: Dockerfile
+    container_name: cloud-scheduler-ai
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MODEL_PATH=/models
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./ai-engine:/app
+      - ai_models:/models
+    depends_on:
+      - redis
+    networks:
+      - scheduler-network
+    restart: unless-stopped
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloud-scheduler-frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - scheduler-network
+    restart: unless-stopped
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: cloud-scheduler-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deployment/docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./deployment/docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - scheduler-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+  ai_models:
+
+networks:
+  scheduler-network:
+    driver: bridge
