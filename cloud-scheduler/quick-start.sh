@@ -57,8 +57,8 @@ REDIS_URL=redis://redis:6379
 SECRET_KEY=your-super-secret-key-change-in-production-$(date +%s)
 
 # 移动云配置（请替换为实际的密钥）
-ECLOUD_ACCESS_KEY=your-ecloud-access-key
-ECLOUD_SECRET_KEY=your-ecloud-secret-key
+ECLOUD_ACCESS_KEY=ed7bbd03fad34980834cae597a02cbfc
+ECLOUD_SECRET_KEY=9ae0582e1e9e4f40ab5c68b744829c61
 ECLOUD_REGION=cn-north-1
 
 # AI引擎配置
@@ -68,7 +68,7 @@ MODEL_UPDATE_INTERVAL=3600
 # 应用配置
 DEBUG=true
 LOG_LEVEL=INFO
-REACT_APP_API_URL=http://localhost:8000
+REACT_APP_API_URL=http://36.138.182.96:8000
 EOF
         print_message $GREEN "✅ 环境配置文件已创建"
     else

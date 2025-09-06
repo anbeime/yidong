@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: Optional[str] = None
     
     # CORS配置
-    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "*"]
+    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://36.138.182.96:3000", "http://36.138.182.96", "*"]
     
     # AI引擎配置
     AI_ENGINE_URL: str = "http://localhost:8001"

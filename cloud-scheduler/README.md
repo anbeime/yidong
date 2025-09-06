@@ -91,6 +91,15 @@ cd frontend && npm start
 docker-compose up -d
 ```
 
+## 公网IP部署
+
+项目已配置公网IP地址 `36.138.182.96`，详细部署指南请参考 [PUBLIC_IP_DEPLOYMENT_GUIDE.md](file:///C:/D/compet/yidong/cloud-scheduler/PUBLIC_IP_DEPLOYMENT_GUIDE.md)。
+
+部署完成后，可通过以下地址访问：
+- **前端管理界面**: http://36.138.182.96:3000
+- **后端API文档**: http://36.138.182.96:8000/docs
+- **AI引擎接口**: http://36.138.182.96:8001/docs
+
 ## 核心功能
 
 1. **智能资源预测** - 基于历史数据预测资源需求

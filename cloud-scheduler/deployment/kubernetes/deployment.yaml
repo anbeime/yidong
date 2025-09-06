@@ -326,7 +326,7 @@ spec:
         image: registry.cmecloud.cn/cloud-scheduler/frontend:latest
         env:
         - name: REACT_APP_API_URL
-          value: "http://cloud-scheduler-backend:8000"
+          value: "http://36.138.182.96:8000"
         ports:
         - containerPort: 3000
         resources:

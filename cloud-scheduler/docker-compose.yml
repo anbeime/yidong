@@ -83,7 +83,7 @@ services:
       dockerfile: Dockerfile
     container_name: cloud-scheduler-frontend
     environment:
-      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://36.138.182.96:8000
     ports:
       - "3000:3000"
     volumes:
