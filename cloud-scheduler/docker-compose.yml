@@ -41,6 +41,9 @@ services:
       - DATABASE_URL=mysql+pymysql://scheduler:schedulerpass@mysql:3306/cloud_scheduler
       - REDIS_URL=redis://redis:6379
       - SECRET_KEY=your-secret-key-here
+      - ECLOUD_ACCESS_KEY=ed7bbd03fad34980834cae597a02cbfc
+      - ECLOUD_SECRET_KEY=9ae0582e1e9e4f40ab5c68b744829c61
+      - ECLOUD_REGION=cn-north-1
     ports:
       - "8000:8000"
     volumes:

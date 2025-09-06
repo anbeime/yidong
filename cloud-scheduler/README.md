@@ -61,7 +61,23 @@ pip install -r backend/requirements.txt
 cd frontend && npm install
 ```
 
-### 2. 启动服务
+### 2. 配置移动云认证信息
+在项目根目录创建 `.env` 文件并配置移动云认证信息：
+
+```env
+# 移动云配置
+ECLOUD_ACCESS_KEY=ed7bbd03fad34980834cae597a02cbfc
+ECLOUD_SECRET_KEY=9ae0582e1e9e4f40ab5c68b744829c61
+ECLOUD_REGION=cn-north-1
+```
+
+或者通过环境变量设置：
+```bash
+export ECLOUD_ACCESS_KEY=ed7bbd03fad34980834cae597a02cbfc
+export ECLOUD_SECRET_KEY=9ae0582e1e9e4f40ab5c68b744829c61
+```
+
+### 3. 启动服务
 ```bash
 # 启动后端服务
 cd backend && uvicorn app.main:app --reload
@@ -70,7 +86,7 @@ cd backend && uvicorn app.main:app --reload
 cd frontend && npm start
 ```
 
-### 3. Docker部署
+### 4. Docker部署
 ```bash
 docker-compose up -d
 ```
