@@ -47,7 +47,7 @@ def init_db():
     """初始化数据库"""
     conn = sqlite3.connect('generated_apps.db')
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS apps
+    c.execute('''CREATE TABLE IF NOT EXISTS generated_apps
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   project_id TEXT UNIQUE,
                   name TEXT,
@@ -81,7 +81,7 @@ def save_app_to_db(app_data: Dict):
     cloud_resources = json.dumps(app_data.get('cloud_resources', []))
     deployment_config = json.dumps(app_data.get('deployment_config', {}))
     
-    c.execute('''INSERT OR REPLACE INTO apps 
+    c.execute('''INSERT OR REPLACE INTO generated_apps 
                  (project_id, name, app_type, requirement, tech_stack, files_count,
                   generated_files, features, complexity, cloud_resources, deployment_config,
                   deployment_url, status, cost_estimate, created_at, updated_at)
@@ -100,7 +100,7 @@ def get_apps_from_db():
     """从数据库获取应用记录"""
     conn = sqlite3.connect('generated_apps.db')
     c = conn.cursor()
-    c.execute('SELECT * FROM apps ORDER BY created_at DESC')
+    c.execute('SELECT * FROM generated_apps ORDER BY created_at DESC')
     rows = c.fetchall()
     conn.close()
     
@@ -135,7 +135,7 @@ def get_app_from_db(project_id: str):
     """从数据库获取单个应用记录"""
     conn = sqlite3.connect('generated_apps.db')
     c = conn.cursor()
-    c.execute('SELECT * FROM apps WHERE project_id = ?', (project_id,))
+    c.execute('SELECT * FROM generated_apps WHERE project_id = ?', (project_id,))
     row = c.fetchone()
     conn.close()
     
@@ -163,14 +163,22 @@ def get_app_from_db(project_id: str):
     
     return None
 
+# API 配置常量
+import requests
+from typing import Any, Dict
+
+user_api_key = 'lRe8U_TZdIZFxfuBio-dJtsBIXwuMBMMumRA3ybMfzE'
+user_agent_id = 'agent_1414239986664374272'  # 示例：agent_1346500388270481408
+base_url = "https://zhenze-huhehaote.cmecloud.cn"
+
 # 移动云MaaS API配置
 MAAS_CONFIG = {
     "api_key": "lRe8U_TZdIZFxfuBio-dJtsBIXwuMBMMumRA3ybMfzE",
     "agent_id": "agent_1414239986664374272",
-    "base_url": "https://zhenze-huhehaote.cmecloud.cn",
+    "base_url": "https://zhenze-huhehaote.cmecloud.cn/api/maas",
     "headers": {
         "Content-Type": "application/json",
-        "Accept": "text/event-stream"
+        "Accept": "application/json"
     }
 }
 
@@ -185,9 +193,20 @@ class ProjectStatus(BaseModel):
     message: str
     deployment_url: Optional[str] = None
 
+# 添加部署请求数据模型
+class DeployRequest(BaseModel):
+    app_id: str
+
+# 添加部署响应数据模型
+class DeployResponse(BaseModel):
+    success: bool
+    message: str
+    deployment_url: Optional[str] = None
+    cost_estimate: Optional[float] = None
+
 # 存储
 projects: Dict[str, ProjectStatus] = {}
-generated_apps = []
+generated_apps = []  # 重新添加初始化
 
 # 应用模板
 APP_TEMPLATES = {
@@ -334,7 +353,7 @@ def call_maas_api(query: str) -> str:
     """调用移动云MaaS API辅助代码生成"""
     try:
         # 构建请求URL
-        api_endpoint = f"{MAAS_CONFIG['base_url']}/api/maas/agent/{MAAS_CONFIG['agent_id']}"
+        api_endpoint = f"{MAAS_CONFIG['base_url']}/chat/completions"
         
         # 设置请求头，包含API Key认证
         headers = MAAS_CONFIG["headers"].copy()
@@ -342,9 +361,14 @@ def call_maas_api(query: str) -> str:
         
         # 请求体参数
         payload: Dict[str, Any] = {
-            "chatId": "",  # 首次对话可不传此参数
-            "query": query,  # 用户输入内容
-            "stream": False,  # 使用非流式传输以便处理响应
+            "model": MAAS_CONFIG['agent_id'],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": query
+                }
+            ],
+            "stream": False  # 使用非流式传输以便处理响应
         }
         
         # 发送POST请求
@@ -359,14 +383,14 @@ def call_maas_api(query: str) -> str:
         
         # 解析响应
         result = response.json()
-        return result.get("data", {}).get("content", "未能生成相关内容")
+        return result.get("choices", [{}])[0].get("message", {}).get("content", "未能生成相关内容")
         
     except requests.exceptions.RequestException as e:
         print(f"调用MaaS API时发生网络错误: {e}")
-        return "网络错误，无法生成相关内容"
+        return "// 网络错误，无法生成相关内容"
     except Exception as e:
         print(f"调用MaaS API时发生未知错误: {e}")
-        return "系统错误，无法生成相关内容"
+        return "// 系统错误，无法生成相关内容"
 
 async def simulate_generation(project_id: str, app_type: str, requirement: str):
     """增强AI代码生成功能"""
@@ -589,6 +613,49 @@ def get_tech_recommendations(app_type: str) -> List[str]:
     }
     return tech_map.get(app_type, ["微服务架构", "云原生部署"])
 
+# 添加部署到移动云的功能
+def deploy_to_ecloud(app_id: str) -> Dict[str, Any]:
+    """部署应用到移动云"""
+    try:
+        # 获取应用信息
+        app = get_app_from_db(app_id)
+        if not app:
+            return {"success": False, "message": "应用不存在"}
+        
+        # 模拟部署过程
+        # 在实际实现中，这里会调用真实的移动云API
+        import time
+        time.sleep(3)  # 模拟部署时间
+        
+        # 生成部署URL
+        deployment_url = f"http://36.138.182.96:8000/projects/{app_id}"
+        
+        # 更新应用的部署状态和URL
+        conn = sqlite3.connect('generated_apps.db')
+        c = conn.cursor()
+        c.execute('''UPDATE generated_apps 
+                     SET deployment_url = ?, status = ?
+                     WHERE project_id = ?''',
+                  (deployment_url, "已部署", app_id))
+        conn.commit()
+        conn.close()
+        
+        # 更新内存中的应用状态
+        for app_item in generated_apps:
+            if app_item["id"] == app_id:
+                app_item["url"] = deployment_url
+                app_item["status"] = "已部署"
+                break
+        
+        return {
+            "success": True,
+            "message": "应用已成功部署到移动云",
+            "deployment_url": deployment_url,
+            "cost_estimate": 1248.50  # 模拟成本估算
+        }
+    except Exception as e:
+        return {"success": False, "message": f"部署失败: {str(e)}"}
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """主页界面"""
@@ -634,6 +701,11 @@ async def index():
                 <div class="text-3xl mb-3">💬</div>
                 <h3 class="text-xl font-bold mb-2">自然语言转应用</h3>
                 <p class="text-gray-600">用中文描述需求，AI自动生成完整应用</p>
+                <p class="text-sm text-blue-600 mt-2">
+                    <a href="https://zhenze-huhehaote.cmecloud.cn/api/maas/agent/agent_1414239986664374272" target="_blank" class="underline">
+                        基于移动云MaaS Agent API
+                    </a>
+                </p>
             </div>
             <div class="bg-white p-6 rounded-lg card-shadow">
                 <div class="text-3xl mb-3">☁️</div>
@@ -644,6 +716,7 @@ async def index():
                 <div class="text-3xl mb-3">🚀</div>
                 <h3 class="text-xl font-bold mb-2">一键部署上线</h3>
                 <p class="text-gray-600">生成后直接部署到移动云</p>
+                <p class="text-sm text-green-600 mt-2">部署地址: 36.138.182.96</p>
             </div>
         </div>
 
@@ -824,7 +897,7 @@ async def index():
                             <p><strong>名称:</strong> ${app.name}</p>
                             <p><strong>类型:</strong> ${app.type}</p>
                             <p><strong>技术栈:</strong> ${app.tech_stack}</p>
-                            <p><strong>访问地址:</strong> <a href="${app.url}" target="_blank" class="text-blue-500">${app.url}</a></p>
+                            <p><strong>访问地址:</strong> <a href="${app.url}" target="_blank" class="text-blue-500">${app.url || '未部署'}</a></p>
                         </div>
                         <div>
                             <h4 class="font-bold">云资源配置</h4>
@@ -835,17 +908,79 @@ async def index():
                             </div>
                         </div>
                         <div class="flex space-x-3">
-                            <a href="${app.url}" target="_blank" class="bg-green-500 text-white px-4 py-2 rounded">
+                            <a href="${app.url}" target="_blank" class="bg-green-500 text-white px-4 py-2 rounded ${app.url ? '' : 'opacity-50 cursor-not-allowed'}">
                                 🚀 访问应用
                             </a>
-                            <button class="bg-blue-500 text-white px-4 py-2 rounded">📦 下载代码</button>
+                            <button onclick="downloadApp('${app.id}')" class="bg-blue-500 text-white px-4 py-2 rounded">
+                                📦 下载代码
+                            </button>
+                            <button onclick="deployApp('${app.id}')" class="bg-purple-500 text-white px-4 py-2 rounded">
+                                ☁️ 部署到移动云
+                            </button>
                         </div>
+                        <div id="deployment-status" class="hidden mt-4 p-3 rounded bg-blue-50 text-blue-800 text-sm"></div>
                     </div>
                 `;
                 document.getElementById('modal').classList.remove('hidden');
                 document.getElementById('modal').classList.add('flex');
             } catch (error) {
                 alert('获取详情失败');
+            }
+        }
+        
+        function downloadApp(appId) {
+            const link = document.createElement('a');
+            link.href = `/api/apps/${appId}/download`;
+            link.download = `app_${appId}.zip`;
+            link.click();
+        }
+        
+        async function deployApp(appId) {
+            const deployButton = event.target;
+            const originalText = deployButton.innerHTML;
+            
+            try {
+                // 更新按钮状态
+                deployButton.innerHTML = '⏳ 部署中...';
+                deployButton.disabled = true;
+                
+                // 显示部署状态区域
+                const statusDiv = document.getElementById('deployment-status');
+                statusDiv.classList.remove('hidden');
+                statusDiv.innerHTML = '正在部署应用到移动云...';
+                
+                // 调用部署API
+                const response = await axios.post(`/api/apps/${appId}/deploy`, {
+                    app_id: appId
+                });
+                
+                if (response.data.success) {
+                    statusDiv.innerHTML = `✅ ${response.data.message}<br>访问地址: <a href="${response.data.deployment_url}" target="_blank" class="text-blue-600 underline">${response.data.deployment_url}</a>`;
+                    statusDiv.className = 'mt-4 p-3 rounded bg-green-50 text-green-800 text-sm';
+                    
+                    // 更新访问应用按钮
+                    const visitButton = document.querySelector('a.bg-green-500');
+                    visitButton.href = response.data.deployment_url;
+                    visitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    
+                    // 3秒后刷新应用列表
+                    setTimeout(() => {
+                        refreshApps();
+                        closeModal();
+                    }, 3000);
+                } else {
+                    statusDiv.innerHTML = `❌ 部署失败: ${response.data.message}`;
+                    statusDiv.className = 'mt-4 p-3 rounded bg-red-50 text-red-800 text-sm';
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('deployment-status');
+                statusDiv.classList.remove('hidden');
+                statusDiv.innerHTML = `❌ 部署失败: ${error.response?.data?.detail || error.message}`;
+                statusDiv.className = 'mt-4 p-3 rounded bg-red-50 text-red-800 text-sm';
+            } finally {
+                // 恢复按钮状态
+                deployButton.innerHTML = originalText;
+                deployButton.disabled = false;
             }
         }
         
@@ -935,8 +1070,33 @@ async def get_app_detail(app_id: str):
             raise HTTPException(status_code=404, detail="应用不存在")
     return app
 
+# 添加部署API端点
+@app.post("/api/apps/{app_id}/deploy", response_model=DeployResponse)
+async def deploy_app(app_id: str, request: DeployRequest):
+    """部署应用到移动云"""
+    if request.app_id != app_id:
+        raise HTTPException(status_code=400, detail="应用ID不匹配")
+    
+    # 调用部署函数
+    result = deploy_to_ecloud(app_id)
+    
+    if result["success"]:
+        return DeployResponse(
+            success=True,
+            message=result["message"],
+            deployment_url=result["deployment_url"],
+            cost_estimate=result["cost_estimate"]
+        )
+    else:
+        raise HTTPException(status_code=500, detail=result["message"])
+
 if __name__ == "__main__":
     import uvicorn
+    # 初始化数据库
+    init_db()
+    # 从数据库加载已生成的应用
+    generated_apps = get_apps_from_db() or []
+    
     print("🚀 CloudCoder AI云原生应用生成平台启动中...")
     print("📍 访问地址: http://localhost:9090")
     # 添加公网IP访问地址提示

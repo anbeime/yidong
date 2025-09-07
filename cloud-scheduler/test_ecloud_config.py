@@ -49,61 +49,66 @@ def test_ecloud_config():
 import requests
 from typing import Any, Dict
 
+# API 配置常量
+user_api_key = 'lRe8U_TZdIZFxfuBio-dJtsBIXwuMBMMumRA3ybMfzE'
+user_agent_id = 'agent_1414239986664374272'  # 示例：agent_1346500388270481408
+base_url = "https://zhenze-huhehaote.cmecloud.cn"
+
+
+def stream_agent_response() -> None:
+    """流式请求Agent API并处理响应"""
+    # 构建请求URL
+    api_endpoint = f"{base_url}/api/maas/agent/{user_agent_id}"
+
+    # 请求头配置
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'Authorization': f'Bearer {user_api_key}'
+    }
+
+    # 请求体参数
+    payload: Dict[str, Any] = {
+        "chatId": "",  # 首次对话可不传此参数，示例：chat-1350161854656348160
+        "query": "你好",  # 用户输入内容
+        "stream": True,  # 强制使用流式传输
+    }
+
+    response = None
+    try:
+        # 发送流式POST请求
+        with requests.post(
+                api_endpoint,
+                headers=headers,
+                json=payload,
+                stream=True
+        ) as response:
+            response.raise_for_status()  # 检查HTTP错误
+            print(f"响应状态码: {response.status_code}")
+            
+            # 处理流式响应
+            for raw_line in response.iter_lines():
+                # 过滤保持连接的空行
+                if raw_line:
+                    decoded_line = raw_line.decode('utf-8')
+                    print(f"收到事件: {decoded_line}")
+
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP错误: {http_err}")
+        if response:
+            print(f"错误响应内容: {response.text}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"请求异常: {req_err}")
+    except UnicodeDecodeError as decode_err:
+        print(f"响应解码失败: {decode_err}")
+    except Exception as unexpected_err:
+        print(f"未预期错误: {unexpected_err})
+
+
 def test_maas_api():
     """测试移动云MaaS API"""
-    # 使用您创建的API Key
-    user_api_key = 'lRe8U_TZdIZFxfuBio-dJtsBIXwuMBMMumRA3ybMfzE'
-    user_agent_id = '<YOUR_AGENT_ID>'  # 请替换为您的Agent ID
-    base_url = "https://zhenze-huhehaote.cmecloud.cn"
-
-    def stream_agent_response() -> None:
-        """流式请求Agent API并处理响应"""
-        # 构建请求URL
-        api_endpoint = f"{base_url}/api/maas/agent/{user_agent_id}"
-
-        # 请求头配置
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'text/event-stream',
-            'Authorization': f'Bearer {user_api_key}'
-        }
-
-        # 请求体参数
-        payload: Dict[str, Any] = {
-            "chatId": "",  # 首次对话可不传此参数
-            "query": "你好",  # 用户输入内容
-            "stream": True,  # 强制使用流式传输
-        }
-
-        try:
-            # 发送流式POST请求
-            with requests.post(
-                    api_endpoint,
-                    headers=headers,
-                    json=payload,
-                    stream=True
-            ) as response:
-                response.raise_for_status()  # 检查HTTP错误
-                print(f"响应状态码: {response.status_code}")
-                
-                # 处理流式响应
-                for raw_line in response.iter_lines():
-                    # 过滤保持连接的空行
-                    if raw_line:
-                        decoded_line = raw_line.decode('utf-8')
-                        print(f"收到事件: {decoded_line}")
-
-        except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP错误: {http_err}")
-        except requests.exceptions.RequestException as req_err:
-            print(f"请求异常: {req_err}")
-        except UnicodeDecodeError as decode_err:
-            print(f"响应解码失败: {decode_err}")
-        except Exception as unexpected_err:
-            print(f"未预期错误: {unexpected_err}")
-
-    # 调用函数
     stream_agent_response()
+
 
 if __name__ == "__main__":
     test_ecloud_config()
