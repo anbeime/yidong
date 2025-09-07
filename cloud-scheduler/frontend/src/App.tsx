@@ -9,12 +9,14 @@ import {
   UserOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Resources from './pages/Resources';
 import Monitoring from './pages/Monitoring';
 import Settings from './pages/Settings';
+import AppGenerator from './pages/AppGenerator';
 import './App.css';
 
 const { Header, Sider, Content } = Layout;
@@ -46,6 +48,11 @@ const App: React.FC = () => {
       key: '/monitoring',
       icon: <BarChartOutlined />,
       label: '监控分析',
+    },
+    {
+      key: '/app-generator',
+      icon: <RocketOutlined />,
+      label: 'AI应用生成',
     },
     {
       key: '/settings',
@@ -189,6 +196,7 @@ const App: React.FC = () => {
             <Route path="/" element={<Dashboard />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/monitoring" element={<Monitoring />} />
+            <Route path="/app-generator" element={<AppGenerator />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Content>

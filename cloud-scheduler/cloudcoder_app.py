@@ -13,6 +13,15 @@ import asyncio
 import json
 import uuid
 from datetime import datetime
+import requests
+from typing import Any
+import sqlite3
+import os
+
+# 确保生成项目目录存在
+GENERATED_PROJECTS_DIR = "generated_projects"
+if not os.path.exists(GENERATED_PROJECTS_DIR):
+    os.makedirs(GENERATED_PROJECTS_DIR)
 
 # 尝试导入真实的AI模块
 try:
@@ -32,6 +41,138 @@ app = FastAPI(
 )
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# 初始化数据库
+def init_db():
+    """初始化数据库"""
+    conn = sqlite3.connect('generated_apps.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS apps
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  project_id TEXT UNIQUE,
+                  name TEXT,
+                  app_type TEXT,
+                  requirement TEXT,
+                  tech_stack TEXT,
+                  files_count INTEGER,
+                  generated_files TEXT,
+                  features TEXT,
+                  complexity TEXT,
+                  cloud_resources TEXT,
+                  deployment_config TEXT,
+                  deployment_url TEXT,
+                  status TEXT,
+                  cost_estimate TEXT,
+                  created_at TIMESTAMP,
+                  updated_at TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+# 保存生成的应用记录到数据库
+def save_app_to_db(app_data: Dict):
+    """保存应用记录到数据库"""
+    conn = sqlite3.connect('generated_apps.db')
+    c = conn.cursor()
+    
+    # 将列表和字典转换为JSON字符串
+    tech_stack = json.dumps(app_data.get('tech_stack', []))
+    generated_files = json.dumps(app_data.get('generated_files', []))
+    features = json.dumps(app_data.get('features', []))
+    cloud_resources = json.dumps(app_data.get('cloud_resources', []))
+    deployment_config = json.dumps(app_data.get('deployment_config', {}))
+    
+    c.execute('''INSERT OR REPLACE INTO apps 
+                 (project_id, name, app_type, requirement, tech_stack, files_count,
+                  generated_files, features, complexity, cloud_resources, deployment_config,
+                  deployment_url, status, cost_estimate, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+              (app_data['id'], app_data['name'], app_data['type'], app_data['requirement'],
+               tech_stack, app_data['files_count'], generated_files, features, 
+               app_data['complexity'], cloud_resources, deployment_config,
+               app_data['url'], app_data['status'], app_data['cost_estimate'],
+               app_data['created_at'], datetime.now().isoformat()))
+    
+    conn.commit()
+    conn.close()
+
+# 从数据库获取应用记录
+def get_apps_from_db():
+    """从数据库获取应用记录"""
+    conn = sqlite3.connect('generated_apps.db')
+    c = conn.cursor()
+    c.execute('SELECT * FROM apps ORDER BY created_at DESC')
+    rows = c.fetchall()
+    conn.close()
+    
+    apps = []
+    for row in rows:
+        try:
+            apps.append({
+                'id': row[1],  # project_id
+                'name': row[2],
+                'type': row[3],
+                'requirement': row[4],
+                'tech_stack': json.loads(row[5]) if row[5] else [],
+                'files_count': row[6],
+                'generated_files': json.loads(row[7]) if row[7] else [],
+                'features': json.loads(row[8]) if row[8] else [],
+                'complexity': row[9],
+                'cloud_resources': json.loads(row[10]) if row[10] else [],
+                'deployment_config': json.loads(row[11]) if row[11] else {},
+                'url': row[12],
+                'status': row[13],
+                'cost_estimate': row[14],
+                'created_at': row[15]
+            })
+        except Exception as e:
+            print(f"解析应用记录时出错: {e}")
+            continue
+    
+    return apps
+
+# 获取单个应用记录
+def get_app_from_db(project_id: str):
+    """从数据库获取单个应用记录"""
+    conn = sqlite3.connect('generated_apps.db')
+    c = conn.cursor()
+    c.execute('SELECT * FROM apps WHERE project_id = ?', (project_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        try:
+            return {
+                'id': row[1],  # project_id
+                'name': row[2],
+                'type': row[3],
+                'requirement': row[4],
+                'tech_stack': json.loads(row[5]) if row[5] else [],
+                'files_count': row[6],
+                'generated_files': json.loads(row[7]) if row[7] else [],
+                'features': json.loads(row[8]) if row[8] else [],
+                'complexity': row[9],
+                'cloud_resources': json.loads(row[10]) if row[10] else [],
+                'deployment_config': json.loads(row[11]) if row[11] else {},
+                'url': row[12],
+                'status': row[13],
+                'cost_estimate': row[14],
+                'created_at': row[15]
+            }
+        except Exception as e:
+            print(f"解析应用记录时出错: {e}")
+    
+    return None
+
+# 移动云MaaS API配置
+MAAS_CONFIG = {
+    "api_key": "lRe8U_TZdIZFxfuBio-dJtsBIXwuMBMMumRA3ybMfzE",
+    "agent_id": "agent_1414239986664374272",
+    "base_url": "https://zhenze-huhehaote.cmecloud.cn",
+    "headers": {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream"
+    }
+}
 
 # 数据模型
 class GenerateRequest(BaseModel):
@@ -189,6 +330,44 @@ def calculate_complexity(requirement: str) -> str:
     max_level = max(scores, key=scores.get)
     return max_level if scores[max_level] > 0 else "中等"
 
+def call_maas_api(query: str) -> str:
+    """调用移动云MaaS API辅助代码生成"""
+    try:
+        # 构建请求URL
+        api_endpoint = f"{MAAS_CONFIG['base_url']}/api/maas/agent/{MAAS_CONFIG['agent_id']}"
+        
+        # 设置请求头，包含API Key认证
+        headers = MAAS_CONFIG["headers"].copy()
+        headers["Authorization"] = f"Bearer {MAAS_CONFIG['api_key']}"
+        
+        # 请求体参数
+        payload: Dict[str, Any] = {
+            "chatId": "",  # 首次对话可不传此参数
+            "query": query,  # 用户输入内容
+            "stream": False,  # 使用非流式传输以便处理响应
+        }
+        
+        # 发送POST请求
+        response = requests.post(
+            api_endpoint,
+            headers=headers,
+            json=payload,
+            timeout=30  # 设置超时时间
+        )
+        
+        response.raise_for_status()  # 检查HTTP错误
+        
+        # 解析响应
+        result = response.json()
+        return result.get("data", {}).get("content", "未能生成相关内容")
+        
+    except requests.exceptions.RequestException as e:
+        print(f"调用MaaS API时发生网络错误: {e}")
+        return "网络错误，无法生成相关内容"
+    except Exception as e:
+        print(f"调用MaaS API时发生未知错误: {e}")
+        return "系统错误，无法生成相关内容"
+
 async def simulate_generation(project_id: str, app_type: str, requirement: str):
     """增强AI代码生成功能"""
     template = APP_TEMPLATES.get(app_type, APP_TEMPLATES["电商"])
@@ -224,11 +403,9 @@ async def simulate_generation(project_id: str, app_type: str, requirement: str):
             projects[project_id].progress = int(progress)
             projects[project_id].message = f"生成文件: {file_path}"
             
-            # 模拟代码生成
-            if CodeGenerator:  # 如果有真实的AI生成器
-                file_content = generate_file_with_ai(file_path, requirement, analysis_result)
-            else:
-                file_content = generate_mock_file_content(file_path, app_type)
+            # 使用移动云MaaS API辅助生成文件内容
+            maas_query = f"为{app_type}应用生成{file_path}文件的代码，需求：{requirement}，功能特性：{', '.join(analysis_result.get('suggested_features', []))}"
+            file_content = call_maas_api(maas_query)
             
             generated_files[file_path] = file_content
             await asyncio.sleep(0.3)  # 模拟生成时间
@@ -252,10 +429,22 @@ async def simulate_generation(project_id: str, app_type: str, requirement: str):
         projects[project_id].status = "completed"
         projects[project_id].progress = 100
         projects[project_id].message = f"{app_type}应用生成完成！"
-        projects[project_id].deployment_url = f"https://{project_id}.ecloud-demo.com"
+        # 使用唯一的项目ID作为子路径，确保每个生成的应用都有唯一URL
+        projects[project_id].deployment_url = f"http://36.138.182.96:8000/projects/{project_id}"
+        
+        # 创建项目目录并保存生成的文件
+        project_dir = os.path.join(GENERATED_PROJECTS_DIR, f"cloudcoder_{app_type.lower()}_{project_id}")
+        os.makedirs(project_dir, exist_ok=True)
+        
+        # 保存生成的文件
+        for file_path, file_content in generated_files.items():
+            full_path = os.path.join(project_dir, file_path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(file_content)
         
         # 添加到应用列表
-        generated_apps.append({
+        app_record = {
             "id": project_id,
             "name": f"{app_type}应用 - {analysis_result.get('complexity_score', '中等')}级",
             "type": app_type,
@@ -269,8 +458,19 @@ async def simulate_generation(project_id: str, app_type: str, requirement: str):
             "generated_files": list(generated_files.keys()),
             "features": analysis_result.get("suggested_features", []),
             "complexity": analysis_result.get("complexity_score", "中等"),
-            "cost_estimate": cloud_config.get("monthly_cost", "￥1,456")
-        })
+            "cost_estimate": cloud_config.get("monthly_cost", "￥1,456"),
+            "deployment_config": {
+                "docker": True,
+                "kubernetes": True,
+                "nginx": True,
+                "ssl": False
+            }
+        }
+        
+        generated_apps.append(app_record)
+        
+        # 保存到数据库
+        save_app_to_db(app_record)
         
     except Exception as e:
         projects[project_id].status = "error"
@@ -729,12 +929,17 @@ async def get_app_detail(app_id: str):
     """获取应用详情"""
     app = next((app for app in generated_apps if app["id"] == app_id), None)
     if not app:
-        raise HTTPException(status_code=404, detail="应用不存在")
+        # 尝试从数据库获取
+        app = get_app_from_db(app_id)
+        if not app:
+            raise HTTPException(status_code=404, detail="应用不存在")
     return app
 
 if __name__ == "__main__":
     import uvicorn
     print("🚀 CloudCoder AI云原生应用生成平台启动中...")
     print("📍 访问地址: http://localhost:9090")
+    # 添加公网IP访问地址提示
+    print("🌐 公网访问地址: http://36.138.182.96:9090")
     print("💡 这是一个真正可用的AI代码生成平台演示")
-    uvicorn.run(app, host="0.0.0.0", port=9090)
+    uvicorn.run(app, host="0.0.0.0", port=9090)  # 绑定到所有网络接口

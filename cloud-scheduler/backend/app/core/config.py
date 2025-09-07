@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         return values.get("DATABASE_URL")
     
     # Redis配置
-    REDIS_URL: str = "redis://localhost:6379"
+    REDIS_URL: str = "redis://36.138.182.96:6379"
     REDIS_DB: int = 0
     REDIS_PASSWORD: Optional[str] = None
     
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://36.138.182.96:3000", "http://36.138.182.96", "*"]
     
     # AI引擎配置
-    AI_ENGINE_URL: str = "http://localhost:8001"
+    AI_ENGINE_URL: str = "http://36.138.182.96:8001"
     MODEL_UPDATE_INTERVAL: int = 3600  # 模型更新间隔(秒)
     
     # 移动云API配置

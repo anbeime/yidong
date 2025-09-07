@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey, JSON, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -229,3 +229,38 @@ class CostOptimization(BaseModel):
     # 关联关系
     project = relationship("Project")
     resource = relationship("Resource")
+
+
+class GeneratedApp(BaseModel):
+    """生成的应用记录表"""
+    __tablename__ = "generated_apps"
+    
+    # 应用基本信息
+    project_id = Column(String(50), unique=True, index=True, nullable=False)  # 生成的项目ID
+    name = Column(String(200), nullable=False)  # 应用名称
+    app_type = Column(String(50), nullable=False)  # 应用类型
+    requirement = Column(Text, nullable=False)  # 用户需求描述
+    
+    # 技术信息
+    tech_stack = Column(JSON)  # 技术栈
+    files_count = Column(Integer)  # 文件数量
+    generated_files = Column(JSON)  # 生成的文件列表
+    
+    # 配置信息
+    features = Column(JSON)  # 功能特性
+    complexity = Column(String(20))  # 复杂度
+    cloud_resources = Column(JSON)  # 云资源配置
+    deployment_config = Column(JSON)  # 部署配置
+    
+    # 访问信息
+    deployment_url = Column(String(500))  # 部署URL
+    status = Column(String(20), default="completed")  # 状态: completed, error
+    
+    # 成本估算
+    cost_estimate = Column(String(50))  # 成本估算
+    
+    # 添加索引以提高查询性能
+    __table_args__ = (
+        Index('idx_generated_apps_app_type', 'app_type'),
+        Index('idx_generated_apps_created_at', 'created_at'),
+    )

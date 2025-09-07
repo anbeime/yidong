@@ -256,6 +256,7 @@ show_access_info() {
     print_message $BLUE "  前端管理界面: http://localhost:3000"
     print_message $BLUE "  后端API文档:  http://localhost:8000/docs"
     print_message $BLUE "  AI引擎接口:   http://localhost:8001/docs"
+    print_message $BLUE "  公网访问地址: http://36.138.182.96:3000"
     print_message $BLUE ""
     print_message $BLUE "默认账号:"
     print_message $BLUE "  用户名: admin"

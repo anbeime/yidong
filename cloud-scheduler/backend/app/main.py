@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import uvicorn
 import os
@@ -8,6 +9,9 @@ import os
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api import api_router
+
+# 导入CloudCoder应用
+from cloudcoder_app import app as cloudcoder_app
 
 
 @asynccontextmanager
@@ -47,6 +51,14 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # 注册API路由
 app.include_router(api_router, prefix="/api/v1")
+
+# 挂载CloudCoder应用
+app.mount("/cloudcoder", cloudcoder_app)
+
+# 挂载生成的应用静态文件目录
+if not os.path.exists("generated_projects"):
+    os.makedirs("generated_projects")
+app.mount("/projects", StaticFiles(directory="generated_projects"), name="projects")
 
 
 @app.get("/")
