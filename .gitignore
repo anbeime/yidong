@@ -1,0 +1,53 @@
+# Node.js dependencies
+node_modules/
+
+# Python virtual environments
+venv/
+.env/
+env/
+.venv/
+
+# Log files
+*.log
+
+# System and IDE files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database files
+*.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Build directories
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.production.local
+
+# IDE specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
