@@ -175,10 +175,10 @@ base_url = "https://zhenze-huhehaote.cmecloud.cn"
 MAAS_CONFIG = {
     "api_key": "lRe8U_TZdIZFxfuBio-dJtsBIXwuMBMMumRA3ybMfzE",
     "agent_id": "agent_1414239986664374272",
-    "base_url": "https://zhenze-huhehaote.cmecloud.cn/api/maas",
+    "base_url": "https://zhenze-huhehaote.cmecloud.cn",
     "headers": {
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Accept": "text/event-stream",  # 流式为text/event-stream，非流式为application/json
     }
 }
 
@@ -352,8 +352,8 @@ def calculate_complexity(requirement: str) -> str:
 def call_maas_api(query: str) -> str:
     """调用移动云MaaS API辅助代码生成"""
     try:
-        # 构建请求URL
-        api_endpoint = f"{MAAS_CONFIG['base_url']}/chat/completions"
+        # 构建请求URL - 使用agent端点
+        api_endpoint = f"{MAAS_CONFIG['base_url']}/api/maas/agent/{MAAS_CONFIG['agent_id']}"
         
         # 设置请求头，包含API Key认证
         headers = MAAS_CONFIG["headers"].copy()
@@ -361,13 +361,7 @@ def call_maas_api(query: str) -> str:
         
         # 请求体参数
         payload: Dict[str, Any] = {
-            "model": MAAS_CONFIG['agent_id'],
-            "messages": [
-                {
-                    "role": "user",
-                    "content": query
-                }
-            ],
+            "query": query,
             "stream": False  # 使用非流式传输以便处理响应
         }
         
@@ -379,15 +373,19 @@ def call_maas_api(query: str) -> str:
             timeout=30  # 设置超时时间
         )
         
-        response.raise_for_status()  # 检查HTTP错误
+        # 检查HTTP状态码
+        if response.status_code != 200:
+            print(f"HTTP错误: {response.status_code} {response.reason}")
+            # 打印原始响应内容
+            content = response.content.decode('utf-8')
+            print(f"原始响应内容: \n{content}")
+            return "// API调用失败，无法生成相关内容"
         
-        # 解析响应
+        # 处理成功的响应
         result = response.json()
-        return result.get("choices", [{}])[0].get("message", {}).get("content", "未能生成相关内容")
+        # 返回answer字段作为响应内容
+        return result.get("answer", "未能生成相关内容")
         
-    except requests.exceptions.RequestException as e:
-        print(f"调用MaaS API时发生网络错误: {e}")
-        return "// 网络错误，无法生成相关内容"
     except Exception as e:
         print(f"调用MaaS API时发生未知错误: {e}")
         return "// 系统错误，无法生成相关内容"
