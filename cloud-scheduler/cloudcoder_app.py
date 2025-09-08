@@ -5,7 +5,7 @@ CloudCoder - AI驱动的云原生应用生成平台
 """
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
@@ -17,6 +17,8 @@ import requests
 from typing import Any
 import sqlite3
 import os
+import zipfile
+import io
 
 # 确保生成项目目录存在
 GENERATED_PROJECTS_DIR = "generated_projects"
@@ -1067,6 +1069,43 @@ async def get_app_detail(app_id: str):
         if not app:
             raise HTTPException(status_code=404, detail="应用不存在")
     return app
+
+@app.get("/api/apps/{app_id}/download")
+async def download_app(app_id: str):
+    """下载生成的应用代码"""
+    # 查找应用
+    app = next((app for app in generated_apps if app["id"] == app_id), None)
+    if not app:
+        # 尝试从数据库获取
+        app = get_app_from_db(app_id)
+        if not app:
+            raise HTTPException(status_code=404, detail="应用不存在")
+    
+    # 构建项目路径
+    project_dir = os.path.join(GENERATED_PROJECTS_DIR, f"cloudcoder_{app['type'].lower()}_{app_id}")
+    
+    if not os.path.exists(project_dir):
+        raise HTTPException(status_code=404, detail="应用文件不存在")
+    
+    # 创建内存中的ZIP文件
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for root, dirs, files in os.walk(project_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arc_path = os.path.relpath(file_path, project_dir)
+                zip_file.write(file_path, arc_path)
+    
+    zip_buffer.seek(0)
+    
+    return Response(
+        content=zip_buffer.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename=cloudcoder_{app['type'].lower()}_{app_id}.zip"
+        }
+    )
 
 # 添加部署API端点
 @app.post("/api/apps/{app_id}/deploy", response_model=DeployResponse)
