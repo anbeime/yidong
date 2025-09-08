@@ -164,3 +164,7 @@ instance/
 
 # Generated files
 generated_apps.db
+
+# Generated projects
+generated_projects/
+cloud-scheduler/generated_projects/

@@ -1,4 +1,0 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: cloudcoder_webapp_5c6e6312
