@@ -353,7 +353,7 @@ def call_maas_api(query: str) -> str:
     """调用移动云MaaS API辅助代码生成"""
     try:
         # 构建请求URL - 使用agent端点
-        api_endpoint = f"{MAAS_CONFIG['base_url']}/api/maas/agent/{MAAS_CONFIG['agent_id']}"
+        api_endpoint = f"{MAAS_CONFIG['base_url']}/api/maas/agent/v1/{MAAS_CONFIG['agent_id']}"
         
         # 设置请求头，包含API Key认证
         headers = MAAS_CONFIG["headers"].copy()
@@ -700,7 +700,7 @@ async def index():
                 <h3 class="text-xl font-bold mb-2">自然语言转应用</h3>
                 <p class="text-gray-600">用中文描述需求，AI自动生成完整应用</p>
                 <p class="text-sm text-blue-600 mt-2">
-                    <a href="https://zhenze-huhehaote.cmecloud.cn/api/maas/agent/agent_1414239986664374272" target="_blank" class="underline">
+                    <a href="https://zhenze-huhehaote.cmecloud.cn" target="_blank" class="underline">
                         基于移动云MaaS Agent API
                     </a>
                 </p>
