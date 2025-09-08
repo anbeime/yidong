@@ -4,7 +4,7 @@ CloudCoder - AI驱动的云原生应用生成平台
 这是一个真正可用的AI代码生成平台演示
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -914,6 +914,9 @@ async def index():
                             <button onclick="downloadApp('${app.id}')" class="bg-blue-500 text-white px-4 py-2 rounded">
                                 📦 下载代码
                             </button>
+                            <button onclick="browseFiles('${app.id}')" class="bg-yellow-500 text-white px-4 py-2 rounded">
+                                📁 浏览文件
+                            </button>
                             <button onclick="deployApp('${app.id}')" class="bg-purple-500 text-white px-4 py-2 rounded">
                                 ☁️ 部署到移动云
                             </button>
@@ -1016,6 +1019,105 @@ async def index():
         function closeModal() {
             document.getElementById('modal').classList.add('hidden');
             document.getElementById('modal').classList.remove('flex');
+        }
+        
+        // 文件浏览器功能
+        async function browseFiles(appId) {
+            try {
+                // 获取文件列表
+                const response = await axios.get(`/api/apps/${appId}/files`);
+                const files = response.data.files;
+                
+                // 显示文件浏览器
+                document.getElementById('modal-content').innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-bold">项目文件浏览器</h3>
+                            <button onclick="closeModal()" class="text-gray-500">✕</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="border rounded-lg p-4">
+                                <h4 class="font-bold mb-2">文件列表</h4>
+                                <div id="file-list" class="max-h-96 overflow-y-auto">
+                                    ${files.map(file => `
+                                        <div class="py-1 hover:bg-gray-100 cursor-pointer" onclick="loadFile('${appId}', '${file}')">
+                                            <span class="text-sm">${file}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div class="border rounded-lg p-4">
+                                <h4 class="font-bold mb-2">文件内容</h4>
+                                <div id="file-editor" class="h-96">
+                                    <p class="text-gray-500">请选择一个文件进行查看和编辑</p>
+                                </div>
+                                <div id="editor-actions" class="mt-4 hidden">
+                                    <button onclick="saveFile()" class="bg-green-500 text-white px-4 py-2 rounded">💾 保存文件</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('modal').classList.remove('hidden');
+                document.getElementById('modal').classList.add('flex');
+            } catch (error) {
+                alert('获取文件列表失败: ' + (error.response?.data?.detail || error.message));
+            }
+        }
+        
+        // 当前编辑的文件信息
+        let currentEditingFile = {
+            appId: null,
+            filePath: null,
+            originalContent: null
+        };
+        
+        // 加载文件内容
+        async function loadFile(appId, filePath) {
+            try {
+                const response = await axios.get(`/api/apps/${appId}/files/${filePath}`);
+                const fileContent = response.data.content;
+                
+                // 更新当前编辑的文件信息
+                currentEditingFile.appId = appId;
+                currentEditingFile.filePath = filePath;
+                currentEditingFile.originalContent = fileContent;
+                
+                // 显示文件内容（简单文本编辑器）
+                document.getElementById('file-editor').innerHTML = `
+                    <textarea id="file-content" class="w-full h-80 p-2 border rounded font-mono text-sm" 
+                              placeholder="文件内容...">${fileContent}</textarea>
+                `;
+                
+                // 显示保存按钮
+                document.getElementById('editor-actions').classList.remove('hidden');
+            } catch (error) {
+                alert('加载文件失败: ' + (error.response?.data?.detail || error.message));
+            }
+        }
+        
+        // 保存文件内容
+        async function saveFile() {
+            if (!currentEditingFile.appId || !currentEditingFile.filePath) {
+                alert('没有文件需要保存');
+                return;
+            }
+            
+            try {
+                const fileContent = document.getElementById('file-content').value;
+                
+                // 发送更新请求
+                await axios.put(`/api/apps/${currentEditingFile.appId}/files/${currentEditingFile.filePath}`, {
+                    content: fileContent
+                });
+                
+                alert('文件保存成功!');
+                
+                // 更新原始内容
+                currentEditingFile.originalContent = fileContent;
+            } catch (error) {
+                alert('保存文件失败: ' + (error.response?.data?.detail || error.message));
+            }
         }
         
         // 初始加载
@@ -1126,6 +1228,101 @@ async def deploy_app(app_id: str, request: DeployRequest):
         )
     else:
         raise HTTPException(status_code=500, detail=result["message"])
+
+# 添加文件内容模型
+class FileContent(BaseModel):
+    content: str
+
+# 添加获取项目文件列表的API端点
+@app.get("/api/apps/{app_id}/files")
+async def get_project_files(app_id: str):
+    """获取生成项目的文件列表"""
+    # 查找应用
+    app = next((app for app in generated_apps if app["id"] == app_id), None)
+    if not app:
+        # 尝试从数据库获取
+        app = get_app_from_db(app_id)
+        if not app:
+            raise HTTPException(status_code=404, detail="应用不存在")
+    
+    # 构建项目路径
+    project_dir = os.path.join(GENERATED_PROJECTS_DIR, f"cloudcoder_{app['type'].lower()}_{app_id}")
+    
+    if not os.path.exists(project_dir):
+        raise HTTPException(status_code=404, detail="应用文件不存在")
+    
+    # 遍历项目目录，构建文件树
+    files = []
+    
+    for root, dirs, filenames in os.walk(project_dir):
+        for filename in filenames:
+            file_path = os.path.join(root, filename)
+            relative_path = os.path.relpath(file_path, project_dir)
+            files.append(relative_path)
+    
+    return {"files": sorted(files)}
+
+# 添加获取文件内容的API端点
+@app.get("/api/apps/{app_id}/files/{file_path:path}")
+async def get_file_content(app_id: str, file_path: str):
+    """获取项目文件内容"""
+    # 查找应用
+    app = next((app for app in generated_apps if app["id"] == app_id), None)
+    if not app:
+        # 尝试从数据库获取
+        app = get_app_from_db(app_id)
+        if not app:
+            raise HTTPException(status_code=404, detail="应用不存在")
+    
+    # 构建项目路径
+    project_dir = os.path.join(GENERATED_PROJECTS_DIR, f"cloudcoder_{app['type'].lower()}_{app_id}")
+    full_file_path = os.path.join(project_dir, file_path)
+    
+    if not os.path.exists(full_file_path):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    
+    # 读取文件内容
+    try:
+        with open(full_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return {"content": content, "file_path": file_path}
+    except Exception as e:
+        # 如果是二进制文件，返回base64编码
+        try:
+            with open(full_file_path, 'rb') as f:
+                content = f.read()
+            import base64
+            encoded_content = base64.b64encode(content).decode('utf-8')
+            return {"content": encoded_content, "file_path": file_path, "binary": True}
+        except Exception as e2:
+            raise HTTPException(status_code=500, detail=f"无法读取文件: {str(e2)}")
+
+# 添加更新文件内容的API端点
+@app.put("/api/apps/{app_id}/files/{file_path:path}")
+async def update_file_content(app_id: str, file_path: str, file_content: FileContent):
+    """更新项目文件内容"""
+    # 查找应用
+    app = next((app for app in generated_apps if app["id"] == app_id), None)
+    if not app:
+        # 尝试从数据库获取
+        app = get_app_from_db(app_id)
+        if not app:
+            raise HTTPException(status_code=404, detail="应用不存在")
+    
+    # 构建项目路径
+    project_dir = os.path.join(GENERATED_PROJECTS_DIR, f"cloudcoder_{app['type'].lower()}_{app_id}")
+    full_file_path = os.path.join(project_dir, file_path)
+    
+    # 确保目录存在
+    os.makedirs(os.path.dirname(full_file_path), exist_ok=True)
+    
+    # 写入文件内容
+    try:
+        with open(full_file_path, 'w', encoding='utf-8') as f:
+            f.write(file_content.content)
+        return {"message": "文件更新成功", "file_path": file_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"无法写入文件: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
